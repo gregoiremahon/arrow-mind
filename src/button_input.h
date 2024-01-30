@@ -1,0 +1,4 @@
+#ifndef BUTTON_INPUT_H_H
+#define BUTTON_INPUT_H_H
+
+#endif //BUTTON_INPUT_H_H

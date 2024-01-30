@@ -1,0 +1,4 @@
+#ifndef AUDIO_CONTROL_H_H
+#define AUDIO_CONTROL_H_H
+
+#endif //AUDIO_CONTROL_H_H
