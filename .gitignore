@@ -1,3 +1,6 @@
 **/.DS_Store
 .vscode/settings.json
 todoList.txt
+.vscode/launch.json
+.vscode/c_cpp_properties.json
+.vscode/tasks.json
