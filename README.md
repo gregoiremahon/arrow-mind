@@ -1,4 +1,4 @@
-# ArrowMind
+# Arrow Mind
 
 ## Description
 "ArrowMind" est un jeu de mémoire interactif pour enfants, développé dans le cadre du projet universitaire long semestre 8 pour la formation EI2I 4 Polytech Sorbonne. Ce jeu combine des défis visuels et auditifs pour améliorer la mémoire et les capacités de reconnaissance des directions et des couleurs.
