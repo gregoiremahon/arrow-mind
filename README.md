@@ -16,6 +16,7 @@
 - **Progression** : Chaque niveau ajoute une action aléatoire, augmentant progressivement la difficulté.
 - **Affichage** : Écran LCD pour la sélection du mode de jeu et l'affichage du score.
 - **Interaction** : Utilisation de boutons directionnels colorés pour la saisie des réponses.
+- **Alimentation** : Jouet autonome en énergie, rechargeable, avec une autonomie d'au moins 24 heures en fonctionnement et une semaine en veille.
 
 ## Matériel
 - **Carte Principale** : LPC1769
@@ -25,7 +26,7 @@
 ## Installation
 1. **Prérequis** : Configurez votre environnement de développement pour la LPC1769 et FreeRTOS.
 2. **Clonage** : Clonez ce dépôt.
-3. **Compilation** : Compilez le projet.
+3. **Compilation** : Compilez le projet. (Nous utilisons KEIL5 avec le compilateur version 5)
 4. **Déploiement** : Téléversez le code compilé sur la carte LPC1769.
 
 ## Utilisation
