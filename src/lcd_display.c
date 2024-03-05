@@ -7,6 +7,10 @@ void display_init() {
     system("clear"); // For Windows. Use system("clear") for Unix/Linux.
 }
 
+void clear_console(){
+    system("clear");
+}
+
 void display_message(const char* message) {
     printf("%s\n", message);
 }
@@ -14,19 +18,29 @@ void display_message(const char* message) {
 void display_character(char c) {
     switch(c) {
         case 'U': 
-            printf("UP "); 
+            printf("HAUT "); 
             break;
         case 'D': 
-            printf("DOWN "); 
+            printf("BAS "); 
             break;
         case 'L': 
-            printf("LEFT "); 
+            printf("GAUCHE "); 
             break;
         case 'R': 
-            printf("RIGHT "); 
+            printf("DROITE "); 
             break;
         default: 
             return;
     }
-    fflush(stdout); // Force output to be displayed immediately
+    fflush(stdout);
+}
+
+void display_timer(int seconds) {
+    printf("Temps disponible pour ce niveau: %02d sec\n", seconds);
+    fflush(stdout);
+}
+
+void display_score(int score){
+    printf("Score: %d\n", score);
+    fflush(stdout);
 }
