@@ -1,4 +1,8 @@
-#ifndef LCD_DISPLAY_H_H
-#define LCD_DISPLAY_H_H
+// lcd_display.h
+#ifndef LCD_DISPLAY_H
+#define LCD_DISPLAY_H
 
-#endif //LCD_DISPLAY_H_H
+void display_init();
+void display_update();
+
+#endif

@@ -1,4 +1,8 @@
-#ifndef GAME_LOGIC_H_H
-#define GAME_LOGIC_H_H
+// game_logic.h
+#ifndef GAME_LOGIC_H
+#define GAME_LOGIC_H
 
-#endif //GAME_LOGIC_H_H
+void init_game();
+void update_game();
+
+#endif

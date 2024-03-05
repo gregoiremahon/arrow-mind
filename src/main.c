@@ -1,8 +1,11 @@
-#include "FreeRTOS/Source/include/FreeRTOS.h"
-#include "stdio.h"
+#include "game_logic.h"
+#include "lcd_display.h"
+#include "button_input.h"
 
-
-int main(void){
-    printf("Hello World");
+int main() {
+    init_game();
+    while (1) {
+        update_game();
+    }
     return 0;
 }

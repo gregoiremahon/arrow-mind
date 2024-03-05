@@ -1,2 +1,10 @@
+// lcd_display.c
 #include "lcd_display.h"
-#include "FreeRTOS/Source/include/FreeRTOS.h"
+
+void display_init() {
+    // Initialiser l'affichage
+}
+
+void display_update() {
+    // Mise à jour de l'affichage
+}
