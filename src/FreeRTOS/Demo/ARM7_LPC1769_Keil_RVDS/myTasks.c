@@ -45,7 +45,7 @@ void vLed1Task( void *pvParameters )
 
 static portTASK_FUNCTION( vLed2Task, pvParameters )
 {
-	/* Les parametres ne sont pas utilisés. */
+	/* Les parametres ne sont pas utilis?s. */
 	( void ) pvParameters;
   LPC_GPIO2->FIODIR |=0x20;
 	for(;;)
@@ -56,7 +56,7 @@ static portTASK_FUNCTION( vLed2Task, pvParameters )
 } /*lint !e715 !e818 !e830 Function definition must be standard for task creation. */
 static portTASK_FUNCTION( vLed3Task, pvParameters )
 {
-	/* Les parametres ne sont pas utilisés. */
+	/* Les parametres ne sont pas utilis?s. */
 	( void ) pvParameters;
   LPC_GPIO2->FIODIR |=0x40;
 	for(;;)
@@ -68,7 +68,7 @@ static portTASK_FUNCTION( vLed3Task, pvParameters )
 
 static portTASK_FUNCTION( vLed4Task, pvParameters )
 {
-	/* Les parametres ne sont pas utilisés. */
+	/* Les parametres ne sont pas utilis?s. */
 	( void ) pvParameters;
   LPC_GPIO2->FIODIR |=0x80;
 	for(;;)
@@ -77,4 +77,3 @@ static portTASK_FUNCTION( vLed4Task, pvParameters )
 		allume_num_tache(4);
 	}
 } /*lint !e715 !e818 !e830 Function definition must be standard for task creation. */
-
