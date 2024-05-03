@@ -2,6 +2,10 @@
 #include "images_data.h"
 #include <stdlib.h> // Pour rand() et srand()
 #include <time.h>   // Pour time(), afin d'initialiser rand()
+#include <stdio.h> // pour sprintf()
+#include <string.h> // Pour memcpy()
+
+#include "LPC17xx.h"
 
 // Définitions des broches pour l'écran TFT
 #define PIN_RST  (1 << 4)  // Reset - P0.4
@@ -14,6 +18,12 @@
 
 // Définition des masques pour les broches de données D0-D7 sur le port 2
 #define LCD_DATA_MASK (0xFF) // D0-D7 sur P2.0 à P2.7
+
+
+#define RGB565(r, g, b) (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3))
+
+#define RED_SCORE     RGB565(255, 0, 0)
+
 
 // Définition des couleurs en composantes RGB565 -> Sur 16 bits
 // Couleurs basiques
@@ -30,13 +40,12 @@
 #define GRAY1		0x8410
 #define GRAY2		0x4208
 
-// Directions possibles des flèches à l'écran.
-typedef enum {
-    UP,
-    DOWN,
-    LEFT,
-    RIGHT
-} ArrowDirection;
+// Gestion  de l'affichage de caractères
+#include <stdint.h>
+
+#define CHAR_WIDTH  5
+#define CHAR_HEIGHT 8
+#define NUM_CHARS 16
 
 // ports des boutons en fonction de leurs directions (sur le port P0.x)
 
@@ -45,8 +54,63 @@ typedef enum {
 #define LEFT_BUTTON  9  // Rouge
 #define RIGHT_BUTTON 8  // Blanc
 
+#define PCLK_UART0 60000000UL  // Définir selon la fréquence du système
+#define BAUDRATE 9600          // Vitesse de transmission désirée  
+
+
 // Séquence de directions 
-#define MAX_SEQUENCE 10 // Longueur maximale de la séquence
+#define MAX_SEQUENCE 15 // Longueur maximale de la séquence
+
+// chiffres 0-9 et des caractères "SCORE: " en 5x8 pixels pour un affichage en noir et blanc
+static uint8_t extended_font[][CHAR_HEIGHT] = {
+    {0x1F, 0x11, 0x11, 0x11, 0x1F}, // 0
+    {0x00, 0x00, 0x1F, 0x00, 0x00}, // 1
+    {0x1D, 0x15, 0x15, 0x15, 0x17}, // 2
+    {0x15, 0x15, 0x15, 0x15, 0x1F}, // 3
+    {0x07, 0x04, 0x04, 0x04, 0x1F}, // 4
+    {0x17, 0x15, 0x15, 0x15, 0x1D}, // 5
+    {0x1F, 0x15, 0x15, 0x15, 0x1D}, // 6
+    {0x01, 0x01, 0x01, 0x01, 0x1F}, // 7
+    {0x1F, 0x15, 0x15, 0x15, 0x1F}, // 8
+    {0x17, 0x15, 0x15, 0x15, 0x1F}, // 9
+		
+    {0x00, 0x14, 0x14, 0x14, 0x1F}, // S
+    {0x00, 0x11, 0x11, 0x11, 0x1F}, // C
+    {0x00, 0x15, 0x15, 0x15, 0x1F}, // O
+    {0x00, 0x15, 0x15, 0x0A, 0x1F}, // R
+    {0x00, 0x05, 0x05, 0x05, 0x1F}, // E
+    {0x00, 0x00, 0x1F, 0x00, 0x00}  // :
+};
+
+
+void rotateExtendedFont180(int numTurns) {
+    uint8_t temp[CHAR_HEIGHT];
+		int n, i, j;
+		
+    int numEffectiveTurns = numTurns % 2;
+
+    for (n = 0; n < numEffectiveTurns; n++) {
+        for (i = 0; i < NUM_CHARS; i++) {
+            // Copier le caractère actuel pour travailler dessus
+            memcpy(temp, extended_font[i], CHAR_HEIGHT);
+            
+            // Inverser les lignes
+            for (j = 0; j < CHAR_HEIGHT; j++) {
+                extended_font[i][j] = temp[CHAR_HEIGHT - 1 - j];
+            }
+        }
+    }
+}
+
+// Directions possibles des flèches à l'écran.
+typedef enum {
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT
+} ArrowDirection;
+
+
 ArrowDirection sequence[MAX_SEQUENCE];
 int sequenceLength = 0; // Longueur actuelle de la séquence
 
@@ -56,6 +120,45 @@ extern const unsigned char image_palette[256 * 3];
 extern const uint16_t imageData[];
 extern const int imageWidth;
 extern const int imageHeight;
+
+volatile int currentScore = 0;
+volatile int bestScore = 0;
+
+volatile uint32_t gen_alea;
+
+
+
+// Fonction pour configurer l'UART
+void initUART(void) {
+    LPC_PINCON->PINSEL0 |= (1 << 4) | (1 << 6); // Configurer les broches P0.2 et P0.3 comme TXD0 et RXD0 respectivement
+    LPC_UART0->LCR = (1 << 7); // Activer le DLAB (Divisor Latch Access Bit) pour permettre la modification du registre DLL et DLM
+    LPC_UART0->DLL = 162; // Pour une vitesse de transmission de 9600 bauds avec un PCLK de 25MHz
+    LPC_UART0->DLM = 0;
+    LPC_UART0->LCR = 3; // Désactiver le DLAB et configurer la taille des données sur 8 bits
+    LPC_UART0->FCR = (1 << 0) | (1 << 1) | (1 << 2); // Activer et réinitialiser les FIFOs de l'UART
+}
+
+// Fonction pour transmettre une chaîne de caractères via l'UART
+void UART_SendString(char *str) {
+    while(*str != '\0') {
+        while(!(LPC_UART0->LSR & (1 << 5))); // Attendre que le registre de transmission soit vide
+        LPC_UART0->THR = *str;
+        str++;
+    }
+}
+
+
+void displaySequenceAndInput(ArrowDirection currentInput) {
+    char *directions[] = {"UP", "DOWN", "LEFT", "RIGHT"};
+		int i;
+    char buffer[128];  // Augmenter la taille du buffer si nécessaire
+
+    // Afficher la direction courante
+    if (currentInput >= UP && currentInput <= LEFT) {
+        sprintf(buffer, "Current Input: %s\n", directions[currentInput]);
+        UART_SendString(buffer);
+    }
+}
 
 
 // Générer une séquence de directions
@@ -260,32 +363,6 @@ void TFTinit(void) {
     //vTaskDelay(pdMS_TO_TICKS(100));  // Attente pour que l'affichage soit prêt
 }
 
-/*void fillScreen(uint16_t color) {
-		// Fonction pour remplir l'écran d'une couleur unie (rempli pas en entier; a revoir)
-
-		int i; 
-    // Sélectionnez la zone d'écran entière
-    sendCMD(0x2A); // Commande pour colonne (X)
-    WRITE_DATA(0x00);
-    WRITE_DATA(0x00);
-    WRITE_DATA((320 - 1) >> 8);
-    WRITE_DATA((320 - 1) & 0xFF);
-
-    sendCMD(0x2B); // Commande pour ligne (Y)
-    WRITE_DATA(0x00);
-    WRITE_DATA(0x00);
-    WRITE_DATA((240 - 1) >> 8);
-    WRITE_DATA((240 - 1) & 0xFF);
-
-    sendCMD(0x2C); // Commencer l'écriture de données
-
-    for (i = 0; i < 320 * 240; i++) {
-        WRITE_DATA(color >> 8); // Partie haute de la couleur
-        WRITE_DATA(color & 0xFF); // Partie basse de la couleur
-    }
-}*/
-
-
 void setCol(uint16_t start, uint16_t end) {
 		// Fonction pour sélectionner la plage de valeurs sur laquelle écrire
 	
@@ -326,73 +403,56 @@ void setArea(int x, int y, int width, int height) {
     sendCMD(0x2C); // Commencer à écrire des données
 }
 
-/*
-Fonction qui affiche simplement un BMP extrait du code python bmp to c array
-void displayImage(const uint16_t *imageData, int x, int y, int width, int height) {
-		int i;
-		int j;
-	
-    // Configure la zone de l'écran où les données de l'image seront écrites
-		setArea(x, y, width, height);
+void sendData(uint16_t data) {
+    LPC_GPIO0->FIOCLR = PIN_CS;
+    LPC_GPIO0->FIOSET = PIN_DC;
+    LPC_GPIO2->FIOPIN = (LPC_GPIO2->FIOPIN & ~LCD_DATA_MASK) | (data >> 8);  // High byte
+    LPC_GPIO0->FIOCLR = PIN_WR;
+    LPC_GPIO0->FIOSET = PIN_WR;
+    LPC_GPIO2->FIOPIN = (LPC_GPIO2->FIOPIN & ~LCD_DATA_MASK) | (data & 0xFF);  // Low byte
+    LPC_GPIO0->FIOCLR = PIN_WR;
+    LPC_GPIO0->FIOSET = PIN_WR;
+    LPC_GPIO0->FIOSET = PIN_CS;
+}
 
-    // Écrit les données de pixels
-    for (i = 0; i < height; i++) {
-        for (j = 0; j < width; j++) {
-            writePixel(imageData[i * width + j]);
-        }
-    }
-}*/
-
+void setPixel(int x, int y, uint16_t color) {
+    setCol(x, x);
+    setPage(y, y);
+    sendCMD(0x2C);  // Write to RAM
+    sendData(color);
+}
 
 void displayArrow(const uint16_t *imageData, int x, int y, int width, int height, ArrowDirection direction) {
-    int i, j;
-    
+    int i, j, pixelIndex;
+    uint16_t color;
+
     setArea(x, y, width, height);
-	
-		// INVERSION DES DIRECTIONS CAR ECRAN A L'ENVERS
-    switch (direction) {
-        case UP: direction = DOWN; break;
-        case DOWN: direction = UP; break;
-        case LEFT: direction = RIGHT; break;
-        case RIGHT: direction = LEFT; break;
-    }    
-		
-		switch (direction) {
-        case UP:
-            // Orientation originale, pas de rotation
-            for (i = 0; i < height; i++) {
-                for (j = 0; j < width; j++) {
-                    writePixel(imageData[i * width + j]);
-                }
-            }
-            break;
 
-        case DOWN:
-            // Rotation de 180 degrés
-            for (i = height - 1; i >= 0; i--) {
-                for (j = width - 1; j >= 0; j--) {
-                    writePixel(imageData[i * width + j]);
-                }
+    for (i = 0; i < height; i++) {
+        for (j = 0; j < width; j++) {
+            switch (direction) {
+                case DOWN: // Base orientation
+                    pixelIndex = i * width + j;
+                    break;
+                case UP: // Rotate 180 degrees
+                    pixelIndex = (height - 1 - i) * width + (width - 1 - j);
+                    break;
+                case LEFT: // Rotate 270 degrees
+                    pixelIndex = (width - 1 - j) * height + i;
+                    break;
+                case RIGHT: // Rotate 90 degrees
+                    pixelIndex = j * height + (height - 1 - i);
+                    break;
             }
-            break;
 
-        case LEFT:
-            // Rotation de 90 degrés vers la gauche
-            for (j = width - 1; j >= 0; j--) {
-                for (i = 0; i < height; i++) {
-                    writePixel(imageData[j + (height - i - 1) * width]);
-                }
+            if (imageData[pixelIndex / 16] & (1 << (pixelIndex % 16))) {
+                color = WHITE;
+            } else {
+                color = BLACK;
             }
-            break;
 
-        case RIGHT:
-            // Rotation de 90 degrés vers la droite
-            for (j = 0; j < width; j++) {
-                for (i = height - 1; i >= 0; i--) {
-                    writePixel(imageData[j + i * width]);
-                }
-            }
-            break;
+            writePixel(color);
+        }
     }
 }
 
@@ -408,10 +468,11 @@ void displayMultipleArrows(const uint16_t *imageData, int width, int height, int
 	
     while (counter < times) {
 				// Léger décalage d'affichage car les affichages sont appelés un par un pour chaque flèche.
+				
         displayArrow(imageData, 0, 40, width, height, currentDirection);
-        displayArrow(imageData, 120, 40, width, height, currentDirection); 
-        displayArrow(imageData, 0, 160, width, height, currentDirection); 
-        displayArrow(imageData, 120, 160, width, height, currentDirection); 
+				displayArrow(imageData, 112, 40, width, height, currentDirection); 
+        displayArrow(imageData, 0, 168, width, height, currentDirection); 
+        displayArrow(imageData, 112, 168, width, height, currentDirection); 
         
         for (delay = 0; delay < 1000000; delay++);
 
@@ -433,6 +494,79 @@ void displayMultipleArrows(const uint16_t *imageData, int width, int height, int
     }
 }
 
+void fillRectangle(int x, int y, int width, int height, uint16_t color) {
+		int i;
+		setCol(x, x + width - 1);
+    setPage(y, y + height - 1);
+    sendCMD(0x2c); // Commence à écrire dans la mémoire d'affichage
+
+    LPC_GPIO0->FIOSET = PIN_DC; // Mode donnée
+    LPC_GPIO0->FIOCLR = PIN_CS; // Sélectionne le TFT
+    for (i = 0; i < width * height; i++) {
+        sendData(color >> 8); // MSB of color
+        sendData(color & 0xFF); // LSB of color
+    }
+		LPC_GPIO0->FIOSET = PIN_CS; // Désélectionne le TFT
+}
+
+
+// Fonctions d'affichage de caractères
+void displayChar(char ch, int x, int y, uint16_t fgColor, uint16_t bgColor, int size) {
+    int charIndex = -1;
+    int row, col;
+    const uint8_t *bitmap;
+
+    // Déterminer l'index du caractère dans la police
+    if (ch >= '0' && ch <= '9') {
+        charIndex = ch - '0';
+    } else if (ch >= 'A' && ch <= 'Z') {
+        charIndex = 10 + (ch - 'A');  // Pour les lettres A-Z dans votre tableau
+        if (ch == ':') {
+            charIndex = 15; // ':' spécifique
+        }
+    } else {
+        return; // Caractère non géré
+    }
+
+    bitmap = extended_font[charIndex];
+
+    // Afficher chaque pixel du caractère, mais tourné de 180 degrés horizontalement (axe x)
+    for (row = 0; row < CHAR_HEIGHT; row++) {
+        for (col = 0; col < CHAR_WIDTH; col++) {
+            // Inverser l'ordre des lignes pour retourner de haut en bas
+            if (bitmap[row] & (1 << col)) {  // Inversion ici pour retourner autour de l'axe x
+                fillRectangle(x + (CHAR_WIDTH - 1 - col) * size, y + row * size, size, size, fgColor);
+            } else {
+                fillRectangle(x + (CHAR_WIDTH - 1 - col) * size, y + row * size, size, size, bgColor);
+            }
+        }
+    }
+}
+
+
+
+
+void drawString(const char* str, int x, int y, uint16_t fgColor, uint16_t bgColor, int size) {
+    while (*str) {
+        displayChar(*str, x, y, fgColor, bgColor, size);
+        y += (CHAR_WIDTH * size);  // Move to the next character slot
+        str++;
+    }
+}
+
+
+
+void displayScore(int score, int x, int y, uint16_t fgColor, uint16_t bgColor, int size) {
+    char scoreText[20];
+    sprintf(scoreText, "%d", score);
+    // Clear the area where the score will be displayed
+    fillRectangle(x, y, (strlen(scoreText) * CHAR_WIDTH * size), (CHAR_HEIGHT * size), bgColor);
+    // Display the score
+    drawString(scoreText, x, y, fgColor, bgColor, size);
+}
+
+
+
 
 void fillScreen(uint32_t color) {
 	  int i;
@@ -451,11 +585,25 @@ void fillScreen(uint32_t color) {
     LPC_GPIO0->FIOSET = PIN_CS; // Désélectionne le TFT
 }
 
+void drawProgressBar(int level) {
+	/*
+	* Bargraph qui affiche la progression du score actuel. 
+	* Un carré reste à la position du meilleur score.
+	*/
+    int i;
+    for (i = 0; i < level; i++) {
+        fillRectangle(15, 45 + i * 6, 5, 5, BLUE);
+    }
+    fillRectangle(15, 45 + bestScore * 6, 5, 5, BLUE); 
+}
+
+
 void displaySequence(void) {
-		int i;
-		volatile int delay;
+    int i;
+    volatile int delay;
     for (i = 0; i < sequenceLength; i++) {
-        displayArrow(up_image_data, 120, 40, 120, 120, sequence[i]);
+				drawProgressBar(i);
+        displayArrow(up_image_data, 56, 96, 128, 128, sequence[i]);
         for (delay = 0; delay < 1000000; delay++); // Délai entre les flèches
     }
 }
@@ -467,60 +615,42 @@ void addDirectionToSequence(ArrowDirection newDirection) {
 }
 
 int readPlayerInput(void) {
-    int currentInput;
-    int inputIndex = 0; // Index pour suivre les entrées de l'utilisateur
-		int i;
+    int currentInput = -1;
     volatile int delay;
-    int inputSequence[MAX_SEQUENCE]; // Tableau pour stocker les entrées de l'utilisateur
+    int attempt;
+    for (attempt = 0; attempt < sequenceLength; attempt++) {
+        int inputCorrect = 0;
+        while (!inputCorrect) {
+            if (readButtonState(UP_BUTTON) == 1) {
+                currentInput = UP;
+            } else if (readButtonState(DOWN_BUTTON) == 1) {
+                currentInput = DOWN;
+            } else if (readButtonState(LEFT_BUTTON) == 1) {
+                currentInput = LEFT;
+            } else if (readButtonState(RIGHT_BUTTON) == 1) {
+                currentInput = RIGHT;
+            } else {
+                currentInput = -1; // Aucune entrée
+							gen_alea++;
+            }
 
-    // Réinitialise le tableau des entrées
-    for(i = 0; i < MAX_SEQUENCE; i++) {
-        inputSequence[i] = -1;
-    }
-
-
-    while (inputIndex < sequenceLength) {
-        currentInput = -1;
-
-        // Lecture de l'entrée de l'utilisateur
-        if (readButtonState(UP_BUTTON) == 1) {
-            currentInput = UP;
-        } else if (readButtonState(DOWN_BUTTON) == 1) {
-            currentInput = DOWN;
-        } else if (readButtonState(LEFT_BUTTON) == 1) {
-            currentInput = LEFT;
-        } else if (readButtonState(RIGHT_BUTTON) == 1) {
-            currentInput = RIGHT;
-        }
-
-        // Si une entrée a été détectée
-        if (currentInput != -1) {
-            // Attendre un court instant pour le debouncing
-            for (delay = 0; delay < 50000; delay++);
-
-            // Confirmation de l'entrée
-            if ((currentInput == UP && readButtonState(UP_BUTTON) == 0) ||
-                (currentInput == DOWN && readButtonState(DOWN_BUTTON) == 0) ||
-                (currentInput == LEFT && readButtonState(LEFT_BUTTON) == 0) ||
-                (currentInput == RIGHT && readButtonState(RIGHT_BUTTON) == 0)) {
-
-                // Stocke l'entrée de l'utilisateur dans le tableau
-                inputSequence[inputIndex++] = currentInput;
-                
-                // Vérifie si la séquence d'entrée correspond à la séquence attendue jusqu'à présent
-                for (i = 0; i < inputIndex; i++) {
-                    if (inputSequence[i] != sequence[i]) {
-                        return 0; // Échec si l'entrée ne correspond pas à la séquence attendue
+            if (currentInput != -1) {
+                for (delay = 0; delay < 90000*7; delay++); // Anti-rebond
+                if ((currentInput == UP && readButtonState(UP_BUTTON) == 0) ||
+                    (currentInput == DOWN && readButtonState(DOWN_BUTTON) == 0) ||
+                    (currentInput == LEFT && readButtonState(LEFT_BUTTON) == 0) ||
+                    (currentInput == RIGHT && readButtonState(RIGHT_BUTTON) == 0)) {
+                    displaySequenceAndInput(currentInput);
+                    if (currentInput == sequence[attempt]) {
+                        inputCorrect = 1;
+                    } else {
+                        return 0; // Échec si l'entrée est incorrecte
                     }
                 }
-
-                // Affichage visuel de la direction entrée
-                displayArrow(up_image_data, 0, 40, 120, 120, currentInput);
             }
         }
     }
-
-    return 1; // Succès si toute la séquence est correctement saisie
+    return 1; // Succès : toute la séquence a été correctement saisie
 }
 
 
@@ -539,87 +669,103 @@ void initGame(void) {
     SystemInit(); // Initialisation du système
     TFTinit(); // Initialisation de l'écran TFT
 		initButtonPorts(); // Initialiser les ports des boutons
-		
-		// Définir manuellement la première direction
-    //addDirectionToSequence(UP); 
-    //srand(time(NULL)); // Initialisation du générateur de nombres aléatoires
+		initUART(); // initialisation de la liaison série
+		UART_SendString("\nDEBUT DE LA PARTIE ARROW MIND...\n\n");
 }
 
 void restartGame(void) {
-    initGame(); 
+    int flashes = 2;  // Nombre de clignotements
+    int i;
+		volatile int delay;
+		srand(gen_alea);
+    for (i = 0; i < flashes; i++) {
+        fillScreen(RED);  // Remplit l'écran en rouge
+        for (delay = 0; delay < 500000; delay++);  
+        fillScreen(GREEN);  // Remplit l'écran en vert
+        for (delay = 0; delay < 500000; delay++);  
+			  fillScreen(BLUE);  // Remplit l'écran en bleu
+        for (delay = 0; delay < 500000; delay++);  
+			  fillScreen(BLACK);  // Remplit l'écran en noir
+        for (delay = 0; delay < 500000; delay++);  
+			  fillScreen(YELLOW);  // Remplit l'écran en jaune
+        for (delay = 0; delay < 500000; delay++);  
+			  fillScreen(WHITE);  // Remplit l'écran en blanc.
+        for (delay = 0; delay < 500000; delay++);
+    }
+
+    initGame();  // Réinitialise le jeu
     sequenceLength = 0;
-    //addDirectionToSequence(UP);
+    //addDirectionToSequence(LEFT);
+}
+
+void handleGameOver(void){
+		if (currentScore > bestScore){
+				bestScore = currentScore;
+		}
+		currentScore = 0;
+		// Le joueur a échoué, fin du jeu
+		displayMultipleArrows(up_image_data, 128,128, 3);
+		restartGame();
+		
 }
 
 void playGame(void) {
-    int level = 1;
-    initGame();
-		displayMultipleArrows(up_image_data, 120,120, 5);
+    int level = 0;
+		char buffer[128];
+		ArrowDirection newDirection;
+
 		TFTinit();
-
-
+		restartGame();
+	
     while (1) {
-        displaySequence(); // Affichez la séquence à l'écran
-
-        if (readPlayerInput()) { // Vérifiez si l'entrée du joueur correspond à la séquence
-						// Assurez-vous que la dernière direction de la séquence est correctement obtenue
+			// Gestion de l'aléatoire
+			srand(gen_alea);
+			rand();
+			
+			// Gestion de la première direction
+			if (sequenceLength == 0) {
+					addDirectionToSequence((ArrowDirection)(rand() % 4));
+			}
+			
+			displaySequence(); // Affichez la séquence à l'écran
+			displayScore(currentScore, 10, 10, WHITE, BLACK, 3);	
+			
+			if (readPlayerInput()) { // Vérifiez si l'entrée du joueur correspond à la séquence
+						// Verif si la dernière direction de la séquence est correctement obtenue
 						ArrowDirection lastDirection = sequenceLength > 0 ? sequence[sequenceLength - 1] : (ArrowDirection)-1;
-						
 						// Génère une nouvelle direction différente de la dernière direction de la séquence
-						ArrowDirection newDirection = generateNextDirection(lastDirection);
-						
+						newDirection = generateNextDirection(lastDirection);
+				
+						sprintf(buffer, "READ PLAYER INPUT OK : %d\n", sequenceLength);
+						UART_SendString(buffer);
+				
 						// Ajoute cette nouvelle direction à la séquence pour le prochain niveau
 						addDirectionToSequence(newDirection);
-						level++; // Augmentez le niveau
-        } else {
-            // Le joueur a échoué, fin du jeu
-						displayMultipleArrows(up_image_data, 120,120, 3);
+						level++;
+						currentScore = level; // mise a jour du score de la partie actuelle
+						sprintf(buffer, "Good. Score actuel : %d\n", currentScore);
+						UART_SendString(buffer);
+						if(newDirection == 0) {
+							sprintf(buffer, "\nATTENDU : %d : %s\n", newDirection, "UP");
+						} else if(newDirection == 1) {
+							sprintf(buffer, "\nATTENDU : %d : %s\n", newDirection, "DOWN");
+						} else if(newDirection == 2) {
+							sprintf(buffer, "\nATTENDU : %d : %s\n", newDirection, "LEFT");
+						} else if(newDirection == 3) {
+							sprintf(buffer, "\nATTENDU : %d : %s\n", newDirection, "RIGHT");
+						}
+						UART_SendString(buffer);
+        } else { // Le joueur a échoué, redemarrage du jeu. Nouvelle séquence et score réinitialisé.
+						if (currentScore > bestScore){
+								bestScore = currentScore;
+						}
+						level = 0;
+						currentScore = 0;
+						displayMultipleArrows(up_image_data, 128,128, 3);
 						restartGame();
-						playGame();
-            break;
         }
     }
 }
-
-/*
-FOnction de jeu avec quatre niveaux directions prédéfinies : haut bas gauche droite
-void playGame(void) {
-    int level = 1; // Commence au niveau 1
-    initGame();
-    displayMultipleArrows(up_image_data, 120, 120, 5);
-    TFTinit();
-
-    // Réinitialisez la longueur de la séquence à chaque début de jeu
-    sequenceLength = 0;
-
-    while (level <= 4) {
-        // Ajouter une nouvelle direction à la séquence pour chaque niveau
-        switch (level) {
-            case 1:
-                addDirectionToSequence(UP);
-                break;
-            case 2:
-                addDirectionToSequence(DOWN);
-                break;
-            case 3:
-                addDirectionToSequence(LEFT);
-                break;
-            case 4:
-                addDirectionToSequence(RIGHT);
-                break;
-        }
-
-        displaySequence(); // Affichez la séquence à l'écran
-        if (readPlayerInput()) { // Vérifiez si l'entrée du joueur correspond à la séquence
-            level++; // Augmentez le niveau
-        } else {
-            // Le joueur a échoué, fin du jeu
-            //displayMultipleArrows(up_image_data, 120, 120, 20);
-            break;
-        }
-    }
-}
-*/
 
 int main(void) {
     playGame();
