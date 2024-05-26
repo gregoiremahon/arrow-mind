@@ -7,17 +7,17 @@
 
 #include "LPC17xx.h"
 
-// DÈfinitions des broches pour l'Ècran TFT
+// D√©finitions des broches pour l'√©cran TFT
 #define PIN_RST  (1 << 4)  // Reset - P0.4
 #define PIN_CS   (1 << 5)  // Chip Select - P0.5
 #define PIN_DC   (1 << 10) // Data/Command - P0.10
 #define PIN_WR   (1 << 11) // Write - P0.11
 #define PIN_RD   (1 << 13) // Read - P2.13
 
-#define P0_MASK(bit) (1 << bit) // Macro pour crÈer un masque pour le port 0
+#define P0_MASK(bit) (1 << bit) // Macro pour cr√©er un masque pour le port 0
 
-// DÈfinition des masques pour les broches de donnÈes D0-D7 sur le port 2
-#define LCD_DATA_MASK (0xFF) // D0-D7 sur P2.0 ‡ P2.7
+// D√©finition des masques pour les broches de donn√©es D0-D7 sur le port 2
+#define LCD_DATA_MASK (0xFF) // D0-D7 sur P2.0 √† P2.7
 
 
 #define RGB565(r, g, b) (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3))
@@ -25,7 +25,7 @@
 #define RED_SCORE     RGB565(255, 0, 0)
 
 
-// DÈfinition des couleurs en composantes RGB565 -> Sur 16 bits
+// D√©finition des couleurs en composantes RGB565 -> Sur 16 bits
 // Couleurs basiques
 #define RED		0xf800
 #define GREEN	0x07e0
@@ -40,7 +40,7 @@
 #define GRAY1		0x8410
 #define GRAY2		0x4208
 
-// Gestion  de l'affichage de caractËres
+// Gestion  de l'affichage de caract√®res
 #include <stdint.h>
 
 #define CHAR_WIDTH  5
@@ -50,18 +50,19 @@
 // ports des boutons en fonction de leurs directions (sur le port P0.x)
 
 #define UP_BUTTON    6  // Bleu
-#define DOWN_BUTTON  7  // Noir
+#define DOWN_BUTTON  7  // Gris	
 #define LEFT_BUTTON  9  // Rouge
 #define RIGHT_BUTTON 8  // Blanc
+#define MID_BUTTON 0 //  Noir
 
-#define PCLK_UART0 60000000UL  // DÈfinir selon la frÈquence du systËme
-#define BAUDRATE 9600          // Vitesse de transmission dÈsirÈe  
+#define PCLK_UART0 60000000UL  // D√©finir selon la fr√©quence du syst√®me
+#define BAUDRATE 9600          // Vitesse de transmission d√©sir√©e  
 
 
-// SÈquence de directions 
-#define MAX_SEQUENCE 15 // Longueur maximale de la sÈquence
+// S√©quence de directions 
+#define MAX_SEQUENCE 15 // Longueur maximale de la s√©quence
 
-// chiffres 0-9 et des caractËres "SCORE: " en 5x8 pixels pour un affichage en noir et blanc
+// chiffres 0-9 et des caract√®res "SCORE: " en 5x8 pixels pour un affichage en noir et blanc
 static uint8_t extended_font[][CHAR_HEIGHT] = {
     {0x1F, 0x11, 0x11, 0x11, 0x1F}, // 0
     {0x00, 0x00, 0x1F, 0x00, 0x00}, // 1
@@ -91,7 +92,7 @@ void rotateExtendedFont180(int numTurns) {
 
     for (n = 0; n < numEffectiveTurns; n++) {
         for (i = 0; i < NUM_CHARS; i++) {
-            // Copier le caractËre actuel pour travailler dessus
+            // Copier le caract√®re actuel pour travailler dessus
             memcpy(temp, extended_font[i], CHAR_HEIGHT);
             
             // Inverser les lignes
@@ -102,7 +103,7 @@ void rotateExtendedFont180(int numTurns) {
     }
 }
 
-// Directions possibles des flËches ‡ l'Ècran.
+// Directions possibles des fl√®ches √† l'√©cran.
 typedef enum {
     UP,
     DOWN,
@@ -112,7 +113,7 @@ typedef enum {
 
 
 ArrowDirection sequence[MAX_SEQUENCE];
-int sequenceLength = 0; // Longueur actuelle de la sÈquence
+int sequenceLength = 0; // Longueur actuelle de la s√©quence
 
 // Lecture Bitmap
 extern const unsigned char image_palette[256 * 3];
@@ -134,11 +135,11 @@ void initUART(void) {
     LPC_UART0->LCR = (1 << 7); // Activer le DLAB (Divisor Latch Access Bit) pour permettre la modification du registre DLL et DLM
     LPC_UART0->DLL = 162; // Pour une vitesse de transmission de 9600 bauds avec un PCLK de 25MHz
     LPC_UART0->DLM = 0;
-    LPC_UART0->LCR = 3; // DÈsactiver le DLAB et configurer la taille des donnÈes sur 8 bits
-    LPC_UART0->FCR = (1 << 0) | (1 << 1) | (1 << 2); // Activer et rÈinitialiser les FIFOs de l'UART
+    LPC_UART0->LCR = 3; // D√©sactiver le DLAB et configurer la taille des donn√©es sur 8 bits
+    LPC_UART0->FCR = (1 << 0) | (1 << 1) | (1 << 2); // Activer et r√©initialiser les FIFOs de l'UART
 }
 
-// Fonction pour transmettre une chaÓne de caractËres via l'UART
+// Fonction pour transmettre une cha√Æne de caract√®res via l'UART
 void UART_SendString(char *str) {
     while(*str != '\0') {
         while(!(LPC_UART0->LSR & (1 << 5))); // Attendre que le registre de transmission soit vide
@@ -151,7 +152,7 @@ void UART_SendString(char *str) {
 void displaySequenceAndInput(ArrowDirection currentInput) {
     char *directions[] = {"UP", "DOWN", "LEFT", "RIGHT"};
 		int i;
-    char buffer[128];  // Augmenter la taille du buffer si nÈcessaire
+    char buffer[128];  // Augmenter la taille du buffer si n√©cessaire
 
     // Afficher la direction courante
     if (currentInput >= UP && currentInput <= LEFT) {
@@ -161,29 +162,30 @@ void displaySequenceAndInput(ArrowDirection currentInput) {
 }
 
 
-// GÈnÈrer une sÈquence de directions
+// G√©n√©rer une s√©quence de directions
 
 void generateSequence(int level) {
 		int i;
     sequenceLength = level; // Augmente avec le niveau
     for (i = 0; i < sequenceLength; i++) {
-        sequence[i] = (ArrowDirection)(rand() % 4); // GÈnËre une direction alÈatoire et la convertit en ArrowDirection
+        sequence[i] = (ArrowDirection)(rand() % 4); // G√©n√®re une direction al√©atoire et la convertit en ArrowDirection
     }
 }
 
-// Initialiser le port du bouton comme entrÈe
+// Initialiser le port du bouton comme entr√©e
 void initButtonPort(uint8_t portBit) {
-    LPC_GPIO0->FIODIR &= ~P0_MASK(portBit); // Configure le pin spÈcifiÈ comme entrÈe
+    LPC_GPIO0->FIODIR &= ~P0_MASK(portBit); // Configure le pin sp√©cifi√© comme entr√©e
 }
 
 void initButtonPorts(void) {
     initButtonPort(6); // Initialiser le port du bouton BLEU (P0.6)
-    initButtonPort(7); // Initialiser le port du bouton NOIR (P0.7)
+    initButtonPort(7); // Initialiser le port du bouton GRIS (P0.7)
     initButtonPort(8); // Initialiser le port du bouton BLANC (P0.8)
     initButtonPort(9); // Initialiser le port du bouton ROUGE (P0.9)
+		initButtonPort(0); // Initialiser le port du bouton NOIR (P0.0)
 }
 
-// Lire l'Ètat du bouton sur P0.x (x=portBit)
+// Lire l'√©tat du bouton sur P0.x (x=portBit)
 int readButtonState(uint8_t portBit) {
 	
 		/*
@@ -235,15 +237,15 @@ void TFTinit(void) {
 
     // Reset du TFT
     LPC_GPIO0->FIOCLR = PIN_RST;
-    for (i = 0; i < 100000; i++); // Petite attente // Attente aprËs le reset
+    for (i = 0; i < 100000; i++); // Petite attente // Attente apr√®s le reset
     LPC_GPIO0->FIOSET = PIN_RST;
-    for (i = 0; i < 500000; i++); // Petite attente // Attente pour que le TFT soit prÍt
+    for (i = 0; i < 500000; i++); // Petite attente // Attente pour que le TFT soit pr√™t
 
-    // Commence la sÈquence d'initialisation du TFT
+    // Commence la s√©quence d'initialisation du TFT
     sendCMD(0x01); // Software reset
     for (i = 0; i < 100000; i++); // Petite attente
 
-    // Commande d'initialisation du contrÙleur du TFT
+    // Commande d'initialisation du contr√¥leur du TFT
     sendCMD(0xCF);  
     WRITE_DATA(0x00); 
     WRITE_DATA(0x8B); 
@@ -303,7 +305,7 @@ void TFTinit(void) {
     sendCMD(0x26);    // Gamma curve selected 
     WRITE_DATA(0x01); 
 
-    // Commandes supplÈmentaires pour rÈgler le gamma de l'Ècran
+    // Commandes suppl√©mentaires pour r√©gler le gamma de l'√©cran
     sendCMD(0xE0); // Set Gamma 
     WRITE_DATA(0x0F); 
     WRITE_DATA(0x31); 
@@ -355,16 +357,16 @@ void TFTinit(void) {
 
     // Sortie de veille
     sendCMD(0x11);  // Sortir du mode veille
-    for (i = 0; i < 200000; i++); // Petite attente  // Attente aprËs la commande "sleep out"
+    for (i = 0; i < 200000; i++); // Petite attente  // Attente apr√®s la commande "sleep out"
 
     // Activation de l'affichage
     sendCMD(0x29);  // Activation de l'affichage
 		for (i = 0; i < 200000; i++); // attente affichage ready
-    //vTaskDelay(pdMS_TO_TICKS(100));  // Attente pour que l'affichage soit prÍt
+    //vTaskDelay(pdMS_TO_TICKS(100));  // Attente pour que l'affichage soit pr√™t
 }
 
 void setCol(uint16_t start, uint16_t end) {
-		// Fonction pour sÈlectionner la plage de valeurs sur laquelle Ècrire
+		// Fonction pour s√©lectionner la plage de valeurs sur laquelle √©crire
 	
     sendCMD(0x2A); // Commande pour colonne (X)
     WRITE_DATA(start >> 8);
@@ -387,7 +389,7 @@ void writePixel(uint16_t color) {
 }
 
 void setArea(int x, int y, int width, int height) {
-		// Configure la zone de l'Ècran o˘ les donnÈes de l'image seront Ècrites
+		// Configure la zone de l'√©cran o√π les donn√©es de l'image seront √©crites
     sendCMD(0x2A); // Commande pour colonne (X)
     WRITE_DATA(x >> 8);
     WRITE_DATA(x & 0xFF);
@@ -400,7 +402,7 @@ void setArea(int x, int y, int width, int height) {
     WRITE_DATA((y + height - 1) >> 8);
     WRITE_DATA((y + height - 1) & 0xFF);
 
-    sendCMD(0x2C); // Commencer ‡ Ècrire des donnÈes
+    sendCMD(0x2C); // Commencer √† √©crire des donn√©es
 }
 
 void sendData(uint16_t data) {
@@ -458,8 +460,8 @@ void displayArrow(const uint16_t *imageData, int x, int y, int width, int height
 
 void displayMultipleArrows(const uint16_t *imageData, int width, int height, int times) {
 		/* 
-		Fonction pour afficher quatre flËches tournantes dans la mÍme direction 
-		Affiche times fois la rotation (peut Ítre utile par exemple durant l'initialisation du jeu -> 10 times = 1 seconde environ)
+		Fonction pour afficher quatre fl√®ches tournantes dans la m√™me direction 
+		Affiche times fois la rotation (peut √™tre utile par exemple durant l'initialisation du jeu -> 10 times = 1 seconde environ)
 		*/
 	
     int delay;
@@ -467,7 +469,7 @@ void displayMultipleArrows(const uint16_t *imageData, int width, int height, int
 		int counter = 0;
 	
     while (counter < times) {
-				// LÈger dÈcalage d'affichage car les affichages sont appelÈs un par un pour chaque flËche.
+				// L√©ger d√©calage d'affichage car les affichages sont appel√©s un par un pour chaque fl√®che.
 				
         displayArrow(imageData, 0, 40, width, height, currentDirection);
 				displayArrow(imageData, 112, 40, width, height, currentDirection); 
@@ -498,39 +500,39 @@ void fillRectangle(int x, int y, int width, int height, uint16_t color) {
 		int i;
 		setCol(x, x + width - 1);
     setPage(y, y + height - 1);
-    sendCMD(0x2c); // Commence ‡ Ècrire dans la mÈmoire d'affichage
+    sendCMD(0x2c); // Commence √† √©crire dans la m√©moire d'affichage
 
-    LPC_GPIO0->FIOSET = PIN_DC; // Mode donnÈe
-    LPC_GPIO0->FIOCLR = PIN_CS; // SÈlectionne le TFT
+    LPC_GPIO0->FIOSET = PIN_DC; // Mode donn√©e
+    LPC_GPIO0->FIOCLR = PIN_CS; // S√©lectionne le TFT
     for (i = 0; i < width * height; i++) {
         sendData(color >> 8); // MSB of color
         sendData(color & 0xFF); // LSB of color
     }
-		LPC_GPIO0->FIOSET = PIN_CS; // DÈsÈlectionne le TFT
+		LPC_GPIO0->FIOSET = PIN_CS; // D√©s√©lectionne le TFT
 }
 
 
-// Fonctions d'affichage de caractËres
+// Fonctions d'affichage de caract√®res
 void displayChar(char ch, int x, int y, uint16_t fgColor, uint16_t bgColor, int size) {
     int charIndex = -1;
     int row, col;
     const uint8_t *bitmap;
 
-    // DÈterminer l'index du caractËre dans la police
+    // D√©terminer l'index du caract√®re dans la police
     if (ch >= '0' && ch <= '9') {
         charIndex = ch - '0';
     } else if (ch >= 'A' && ch <= 'Z') {
         charIndex = 10 + (ch - 'A');  // Pour les lettres A-Z dans votre tableau
         if (ch == ':') {
-            charIndex = 15; // ':' spÈcifique
+            charIndex = 15; // ':' sp√©cifique
         }
     } else {
-        return; // CaractËre non gÈrÈ
+        return; // Caract√®re non g√©r√©
     }
 
     bitmap = extended_font[charIndex];
 
-    // Afficher chaque pixel du caractËre, mais tournÈ de 180 degrÈs horizontalement (axe x)
+    // Afficher chaque pixel du caract√®re, mais tourn√© de 180 degr√©s horizontalement (axe x)
     for (row = 0; row < CHAR_HEIGHT; row++) {
         for (col = 0; col < CHAR_WIDTH; col++) {
             // Inverser l'ordre des lignes pour retourner de haut en bas
@@ -572,23 +574,23 @@ void fillScreen(uint32_t color) {
 	  int i;
     setCol(0, 239);
     setPage(0, 319);
-    sendCMD(0x2c); // Commence ‡ Ècrire dans la mÈmoire d'affichage
+    sendCMD(0x2c); // Commence √† √©crire dans la m√©moire d'affichage
 
-    LPC_GPIO0->FIOSET = PIN_DC; // Mode donnÈe
-    LPC_GPIO0->FIOCLR = PIN_CS; // SÈlectionne le TFT
+    LPC_GPIO0->FIOSET = PIN_DC; // Mode donn√©e
+    LPC_GPIO0->FIOCLR = PIN_CS; // S√©lectionne le TFT
 
     for (i = 0; i < 76800; i++) { // Pour chaque pixel (320x240)
         WRITE_DATA(color >> 8); // Partie haute de la couleur
         WRITE_DATA(color & 0xFF); // Partie basse de la couleur
     }
 
-    LPC_GPIO0->FIOSET = PIN_CS; // DÈsÈlectionne le TFT
+    LPC_GPIO0->FIOSET = PIN_CS; // D√©s√©lectionne le TFT
 }
 
 void drawProgressBar(int level) {
 	/*
 	* Bargraph qui affiche la progression du score actuel. 
-	* Un carrÈ reste ‡ la position du meilleur score.
+	* Un carr√© reste √† la position du meilleur score.
 	*/
     int i;
     for (i = 0; i < level; i++) {
@@ -604,7 +606,7 @@ void displaySequence(void) {
     for (i = 0; i < sequenceLength; i++) {
 				drawProgressBar(i);
         displayArrow(up_image_data, 56, 96, 128, 128, sequence[i]);
-        for (delay = 0; delay < 1000000; delay++); // DÈlai entre les flËches
+        for (delay = 0; delay < 1000000; delay++); // D√©lai entre les fl√®ches
     }
 }
 
@@ -621,7 +623,11 @@ int readPlayerInput(void) {
     for (attempt = 0; attempt < sequenceLength; attempt++) {
         int inputCorrect = 0;
         while (!inputCorrect) {
-            if (readButtonState(UP_BUTTON) == 1) {
+						 if (readButtonState(MID_BUTTON) == 1) { 
+                displaySequence(); // Remontre la s√©quence enti√®re
+							 attempt = 0;
+                continue; 
+						} else if (readButtonState(UP_BUTTON) == 1) {
                 currentInput = UP;
             } else if (readButtonState(DOWN_BUTTON) == 1) {
                 currentInput = DOWN;
@@ -630,7 +636,7 @@ int readPlayerInput(void) {
             } else if (readButtonState(RIGHT_BUTTON) == 1) {
                 currentInput = RIGHT;
             } else {
-                currentInput = -1; // Aucune entrÈe
+                currentInput = -1; // Aucune entr√©e
 							gen_alea++;
             }
 
@@ -644,13 +650,13 @@ int readPlayerInput(void) {
                     if (currentInput == sequence[attempt]) {
                         inputCorrect = 1;
                     } else {
-                        return 0; // …chec si l'entrÈe est incorrecte
+                        return 0; // √âchec si l'entr√©e est incorrecte
                     }
                 }
             }
         }
     }
-    return 1; // SuccËs : toute la sÈquence a ÈtÈ correctement saisie
+    return 1; // Succ√®s : toute la s√©quence a √©t√© correctement saisie
 }
 
 
@@ -660,16 +666,16 @@ int readPlayerInput(void) {
 ArrowDirection generateNextDirection(ArrowDirection lastDirection) {
     ArrowDirection nextDirection;
     do {
-        nextDirection = (ArrowDirection)(rand() % 4); // GÈnËre une nouvelle direction alÈatoirement
-    } while (nextDirection == lastDirection); // RÈpËte si la nouvelle direction est identique ‡ la derniËre
+        nextDirection = (ArrowDirection)(rand() % 4); // G√©n√®re une nouvelle direction al√©atoirement
+    } while (nextDirection == lastDirection); // R√©p√®te si la nouvelle direction est identique √† la derni√®re
     return nextDirection;
 }
 
 void initGame(void) {
-    SystemInit(); // Initialisation du systËme
-    TFTinit(); // Initialisation de l'Ècran TFT
+    SystemInit(); // Initialisation du syst√®me
+    TFTinit(); // Initialisation de l'√©cran TFT
 		initButtonPorts(); // Initialiser les ports des boutons
-		initUART(); // initialisation de la liaison sÈrie
+		initUART(); // initialisation de la liaison s√©rie
 		UART_SendString("\nDEBUT DE LA PARTIE ARROW MIND...\n\n");
 }
 
@@ -679,21 +685,21 @@ void restartGame(void) {
 		volatile int delay;
 		srand(gen_alea);
     for (i = 0; i < flashes; i++) {
-        fillScreen(RED);  // Remplit l'Ècran en rouge
+        fillScreen(RED);  // Remplit l'√©cran en rouge
         for (delay = 0; delay < 500000; delay++);  
-        fillScreen(GREEN);  // Remplit l'Ècran en vert
+        fillScreen(GREEN);  // Remplit l'√©cran en vert
         for (delay = 0; delay < 500000; delay++);  
-			  fillScreen(BLUE);  // Remplit l'Ècran en bleu
+			  fillScreen(BLUE);  // Remplit l'√©cran en bleu
         for (delay = 0; delay < 500000; delay++);  
-			  fillScreen(BLACK);  // Remplit l'Ècran en noir
+			  fillScreen(BLACK);  // Remplit l'√©cran en noir
         for (delay = 0; delay < 500000; delay++);  
-			  fillScreen(YELLOW);  // Remplit l'Ècran en jaune
+			  fillScreen(YELLOW);  // Remplit l'√©cran en jaune
         for (delay = 0; delay < 500000; delay++);  
-			  fillScreen(WHITE);  // Remplit l'Ècran en blanc.
+			  fillScreen(WHITE);  // Remplit l'√©cran en blanc.
         for (delay = 0; delay < 500000; delay++);
     }
 
-    initGame();  // RÈinitialise le jeu
+    initGame();  // R√©initialise le jeu
     sequenceLength = 0;
     //addDirectionToSequence(LEFT);
 }
@@ -703,10 +709,19 @@ void handleGameOver(void){
 				bestScore = currentScore;
 		}
 		currentScore = 0;
-		// Le joueur a ÈchouÈ, fin du jeu
+		// Le joueur a √©chou√©, fin du jeu
 		displayMultipleArrows(up_image_data, 128,128, 3);
 		restartGame();
 		
+}
+void replayFullSequence(void) {
+    int i;
+    volatile int delay;
+
+    for (i = 0; i < sequenceLength; i++) {
+        displayArrow(up_image_data, 56, 96, 128, 128, sequence[i]);  // Afficher la fl√®che correspondant √† l'index i
+        for (delay = 0; delay < 10000000; delay++); // Temps de pause entre les fl√®ches pour une bonne visualisation
+    }
 }
 
 void playGame(void) {
@@ -718,28 +733,28 @@ void playGame(void) {
 		restartGame();
 	
     while (1) {
-			// Gestion de l'alÈatoire
+			// Gestion de l'al√©atoire
 			srand(gen_alea);
 			rand();
 			
-			// Gestion de la premiËre direction
+			// Gestion de la premi√®re direction
 			if (sequenceLength == 0) {
 					addDirectionToSequence((ArrowDirection)(rand() % 4));
 			}
 			
-			displaySequence(); // Affichez la sÈquence ‡ l'Ècran
+			displaySequence(); // Affichez la s√©quence √† l'√©cran
 			displayScore(currentScore, 10, 10, WHITE, BLACK, 3);	
 			
-			if (readPlayerInput()) { // VÈrifiez si l'entrÈe du joueur correspond ‡ la sÈquence
-						// Verif si la derniËre direction de la sÈquence est correctement obtenue
+			if (readPlayerInput()) { // V√©rifiez si l'entr√©e du joueur correspond √† la s√©quence
+						// Verif si la derni√®re direction de la s√©quence est correctement obtenue
 						ArrowDirection lastDirection = sequenceLength > 0 ? sequence[sequenceLength - 1] : (ArrowDirection)-1;
-						// GÈnËre une nouvelle direction diffÈrente de la derniËre direction de la sÈquence
+						// G√©n√®re une nouvelle direction diff√©rente de la derni√®re direction de la s√©quence
 						newDirection = generateNextDirection(lastDirection);
 				
 						sprintf(buffer, "READ PLAYER INPUT OK : %d\n", sequenceLength);
 						UART_SendString(buffer);
 				
-						// Ajoute cette nouvelle direction ‡ la sÈquence pour le prochain niveau
+						// Ajoute cette nouvelle direction √† la s√©quence pour le prochain niveau
 						addDirectionToSequence(newDirection);
 						level++;
 						currentScore = level; // mise a jour du score de la partie actuelle
@@ -755,7 +770,7 @@ void playGame(void) {
 							sprintf(buffer, "\nATTENDU : %d : %s\n", newDirection, "RIGHT");
 						}
 						UART_SendString(buffer);
-        } else { // Le joueur a ÈchouÈ, redemarrage du jeu. Nouvelle sÈquence et score rÈinitialisÈ.
+        } else { // Le joueur a √©chou√©, redemarrage du jeu. Nouvelle s√©quence et score r√©initialis√©.
 						if (currentScore > bestScore){
 								bestScore = currentScore;
 						}

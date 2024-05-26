@@ -9,7 +9,7 @@
     - Mode Flèches
     - Mode Couleurs
     - Mode Mixte (Flèches et Couleurs)
-  - **Audio** : Donne des instructions vocales pour les directions et/ou les couleurs.
+  - **Audio** : Donne des instructions vocales pour les directions et/ou les couleurs. -- *Non implémenté*
     - Mode Flèches
     - Mode Couleurs
     - Mode Mixte
@@ -22,6 +22,63 @@
 - **Carte Principale** : LPC1769
 - **Système d'Exploitation** : FreeRTOS
 - **Périphériques** : Boutons poussoirs directionnels colorés, écran LCD, haut-parleur pour les instructions audio
+- **Structure** : PCB avec cinq boutons poussoirs, boîtier imprimé en 3D, alimenté par une batterie de 5V
+
+## Schéma de Câblage
+
+### LPC1769
++-------------------------+
+| |
+| P0.4 (RST) ---------> Reset
+| P0.5 (CS) ----------> Chip Select
+| P0.10 (DC) ---------> Data/Command
+| P0.11 (WR) ---------> Write
+| |
+| P2.13 (RD) ---------> Read
+| |
+| P2.0 (D0) ----------> D0
+| P2.1 (D1) ----------> D1
+| P2.2 (D2) ----------> D2
+| P2.3 (D3) ----------> D3
+| P2.4 (D4) ----------> D4
+| P2.5 (D5) ----------> D5
+| P2.6 (D6) ----------> D6
+| P2.7 (D7) ----------> D7
+| |
+| P0.6 ---------------> Bouton BLEU
+| P0.7 ---------------> Bouton GRIS
+| P0.8 ---------------> Bouton BLANC
+| P0.9 ---------------> Bouton ROUGE
+| P1.0 ---------------> Bouton NOIR
+| |
++-------------------------+
+
+### Écran TFT
+LPC1769 Écran TFT
+P0.4 ----------------> Reset (RST)
+P0.5 ----------------> Chip Select (CS)
+P0.10 ----------------> Data/Command (DC)
+P0.11 ----------------> Write (WR)
+P2.13 ----------------> Read (RD)
+
+P2.0 ----------------> D0
+P2.1 ----------------> D1
+P2.2 ----------------> D2
+P2.3 ----------------> D3
+P2.4 ----------------> D4
+P2.5 ----------------> D5
+P2.6 ----------------> D6
+P2.7 ----------------> D7
+
+
+### Boutons
+P0.6 ----------------> Bouton BLEU
+P0.7 ----------------> Bouton GRIS
+P0.8 ----------------> Bouton BLANC
+P0.9 ----------------> Bouton ROUGE
+P1.0 ----------------> Bouton NOIR
+
+
 
 ## Installation
 1. **Prérequis** : Configurez votre environnement de développement pour la LPC1769 et FreeRTOS.
@@ -30,7 +87,7 @@
 4. **Déploiement** : Téléversez le code compilé sur la carte LPC1769.
 
 ## Utilisation
-Au démarrage, sélectionnez le mode de jeu sur l'écran LCD. Suivez les instructions affichées ou annoncées et utilisez les boutons pour répondre.
+Au démarrage, sélectionnez le mode de jeu sur l'écran LCD. Suivez les instructions affichées pour jouer. Si vous échouez, le meilleur score s'actualisera et la partie recommence.
 
 ## Contribution
 Ce projet est une collaboration des étudiants de Polytech Sorbonne : @wolfyc, @A-LELONG, @gregoiremahon et Chahine Boukhenaissi.
@@ -39,7 +96,7 @@ Ce projet est une collaboration des étudiants de Polytech Sorbonne : @wolfyc, @
 Ce projet est distribué sous une licence ouverte.
 
 ## Auteurs
-- Wolfyc
-- A-LELONG
+- Mohamed ZAIDI
+- Armand LELONG
 - Gregoire Mahon
 - Chahine Boukhenaissi
