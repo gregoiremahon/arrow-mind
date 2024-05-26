@@ -27,56 +27,56 @@
 ## Schéma de Câblage
 
 ### LPC1769
-+-------------------------+
-| |
-| P0.4 (RST) ---------> Reset
-| P0.5 (CS) ----------> Chip Select
-| P0.10 (DC) ---------> Data/Command
-| P0.11 (WR) ---------> Write
-| |
-| P2.13 (RD) ---------> Read
-| |
-| P2.0 (D0) ----------> D0
-| P2.1 (D1) ----------> D1
-| P2.2 (D2) ----------> D2
-| P2.3 (D3) ----------> D3
-| P2.4 (D4) ----------> D4
-| P2.5 (D5) ----------> D5
-| P2.6 (D6) ----------> D6
-| P2.7 (D7) ----------> D7
-| |
-| P0.6 ---------------> Bouton BLEU
-| P0.7 ---------------> Bouton GRIS
-| P0.8 ---------------> Bouton BLANC
-| P0.9 ---------------> Bouton ROUGE
-| P1.0 ---------------> Bouton NOIR
-| |
-+-------------------------+
+
+| LPC1769 Pin | Fonction              |
+|-------------|-----------------------|
+| P0.4        | Reset (RST)           |
+| P0.5        | Chip Select (CS)      |
+| P0.10       | Data/Command (DC)     |
+| P0.11       | Write (WR)            |
+| P2.13       | Read (RD)             |
+| P2.0        | D0                    |
+| P2.1        | D1                    |
+| P2.2        | D2                    |
+| P2.3        | D3                    |
+| P2.4        | D4                    |
+| P2.5        | D5                    |
+| P2.6        | D6                    |
+| P2.7        | D7                    |
+| P0.6        | Bouton BLEU           |
+| P0.7        | Bouton GRIS           |
+| P0.8        | Bouton BLANC          |
+| P0.9        | Bouton ROUGE          |
+| P1.0        | Bouton NOIR           |
 
 ### Écran TFT
-LPC1769 Écran TFT
-P0.4 ----------------> Reset (RST)
-P0.5 ----------------> Chip Select (CS)
-P0.10 ----------------> Data/Command (DC)
-P0.11 ----------------> Write (WR)
-P2.13 ----------------> Read (RD)
 
-P2.0 ----------------> D0
-P2.1 ----------------> D1
-P2.2 ----------------> D2
-P2.3 ----------------> D3
-P2.4 ----------------> D4
-P2.5 ----------------> D5
-P2.6 ----------------> D6
-P2.7 ----------------> D7
-
+| LPC1769 Pin | Écran TFT Pin         |
+|-------------|-----------------------|
+| P0.4        | Reset (RST)           |
+| P0.5        | Chip Select (CS)      |
+| P0.10       | Data/Command (DC)     |
+| P0.11       | Write (WR)            |
+| P2.13       | Read (RD)             |
+| P2.0        | D0                    |
+| P2.1        | D1                    |
+| P2.2        | D2                    |
+| P2.3        | D3                    |
+| P2.4        | D4                    |
+| P2.5        | D5                    |
+| P2.6        | D6                    |
+| P2.7        | D7                    |
 
 ### Boutons
-P0.6 ----------------> Bouton BLEU
-P0.7 ----------------> Bouton GRIS
-P0.8 ----------------> Bouton BLANC
-P0.9 ----------------> Bouton ROUGE
-P1.0 ----------------> Bouton NOIR
+
+| LPC1769 Pin | Bouton                |
+|-------------|-----------------------|
+| P0.6        | Bouton BLEU           |
+| P0.7        | Bouton GRIS           |
+| P0.8        | Bouton BLANC          |
+| P0.9        | Bouton ROUGE          |
+| P1.0        | Bouton NOIR           |
+
 
 
 
